@@ -1,0 +1,760 @@
+<html lang="ja"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>経費精算アプリ</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --border: #e2e0d8;
+  --border2: #ccc9be;
+  --text: #1c1c1a;
+  --text2: #5c5c58;
+  --text3: #9c9c96;
+  --accent: #1c1c1a;
+  --accent-fg: #fff;
+  --green-bg: #e8f3dc;
+  --green: #3a6d10;
+  --blue-bg: #e4f0fb;
+  --blue: #185fa5;
+  --r: 10px;
+  --r2: 6px;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; }
+
+/* ===== SETUP SCREEN ===== */
+#setup-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem; }
+.setup-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 2.5rem 2rem; width: 100%; max-width: 440px; }
+.setup-card h1 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.setup-card .sub { font-size: 13px; color: var(--text2); margin-bottom: 1.5rem; }
+.setup-section { margin-bottom: 1.25rem; }
+.setup-section label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
+.setup-section input { width: 100%; padding: 10px 12px; font-size: 14px; border: 1px solid var(--border2); border-radius: var(--r2); outline: none; }
+.setup-section input:focus { border-color: var(--accent); }
+.setup-section .hint { font-size: 12px; color: var(--text3); margin-top: 5px; }
+.setup-section .hint a { color: var(--blue); }
+.btn-primary { width: 100%; padding: 11px; font-size: 15px; font-weight: 600; background: var(--accent); color: var(--accent-fg); border: none; border-radius: var(--r2); cursor: pointer; margin-top: .25rem; }
+.btn-primary:hover { opacity: .85; }
+.setup-err { font-size: 13px; color: #c0392b; margin-top: 8px; display: none; }
+.setup-divider { text-align: center; font-size: 12px; color: var(--text3); margin: 1rem 0; }
+
+/* ===== APP ===== */
+#app-screen { display: none; }
+.topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 1.5rem; height: 52px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+.topbar-left { display: flex; align-items: center; gap: 10px; }
+.topbar-title { font-size: 15px; font-weight: 700; }
+.topbar-right { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text2); }
+.save-pill { font-size: 11px; padding: 3px 9px; border-radius: 20px; background: var(--bg); border: 1px solid var(--border); color: var(--text3); transition: all .2s; }
+.save-pill.saving { color: #c07800; border-color: #c07800; background: #fff8e6; }
+.save-pill.saved  { color: var(--green); border-color: var(--green); background: var(--green-bg); }
+.btn-sm { padding: 5px 12px; font-size: 12px; border: 1px solid var(--border2); border-radius: 20px; background: transparent; cursor: pointer; color: var(--text2); }
+.btn-sm:hover { background: var(--bg); }
+.main { max-width: 880px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+
+/* ===== CARDS ===== */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 1.25rem; margin-bottom: 1rem; }
+.card-title { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px; }
+
+/* ===== TABS ===== */
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
+.tab { padding: 6px 14px; font-size: 13px; border: 1px solid var(--border2); border-radius: 20px; cursor: pointer; background: transparent; color: var(--text2); }
+.tab.active { background: var(--accent); color: #fff; border-color: transparent; }
+
+/* ===== DROP ZONE ===== */
+.dz { border: 2px dashed var(--border2); border-radius: var(--r2); padding: 1.75rem 1rem; text-align: center; transition: all .15s; background: var(--bg); }
+.dz.over { border-color: var(--accent); background: #eeecea; border-style: solid; }
+.dz-icon { font-size: 28px; margin-bottom: 8px; }
+.dz p { font-size: 14px; color: var(--text2); margin-bottom: 5px; }
+.dz-sub { font-size: 12px; color: var(--text3) !important; margin-bottom: 10px !important; }
+.fmt-row { display: flex; gap: 4px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
+.fmt { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--surface); color: var(--text2); border: 1px solid var(--border); }
+.btn-pick { padding: 7px 18px; font-size: 13px; border: 1px solid var(--border2); border-radius: var(--r2); background: var(--surface); cursor: pointer; }
+.btn-pick:hover { background: var(--bg); }
+
+/* ===== STATUS ===== */
+.status-box { margin-top: 12px; display: none; }
+.proc-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text2); padding: 4px 0; }
+.spinner { width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.log-box { margin-top: 6px; font-size: 12px; color: var(--text3); border-top: 1px solid var(--border); padding-top: 6px; max-height: 80px; overflow-y: auto; }
+.log-box div { padding: 1px 0; }
+.preview-strip { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.preview-strip img { height: 72px; border-radius: var(--r2); object-fit: contain; border: 1px solid var(--border); background: var(--bg); }
+
+/* ===== MANUAL FORM ===== */
+.mform { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.fg { display: flex; flex-direction: column; gap: 4px; }
+.fg label { font-size: 12px; color: var(--text2); font-weight: 500; }
+.fg input, .fg select { font-size: 14px; padding: 8px 10px; border: 1px solid var(--border2); border-radius: var(--r2); outline: none; background: var(--surface); color: var(--text); }
+.fg input:focus, .fg select:focus { border-color: var(--accent); }
+.btn-add { grid-column: 1/-1; padding: 9px; font-size: 14px; cursor: pointer; border: 1px solid var(--border2); border-radius: var(--r2); background: transparent; }
+.btn-add:hover { background: var(--bg); }
+
+/* ===== MONTH TABS ===== */
+.month-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.mtab { padding: 5px 14px; font-size: 13px; border: 1px solid var(--border2); border-radius: 20px; cursor: pointer; background: transparent; color: var(--text2); white-space: nowrap; }
+.mtab.active { background: var(--accent); color: #fff; border-color: transparent; }
+.mtab .cnt { font-size: 10px; opacity: .65; margin-left: 3px; }
+
+/* ===== STATS ===== */
+.stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: 10px; margin-bottom: 1rem; }
+.stat { background: var(--bg); border-radius: var(--r2); padding: .875rem; }
+.stat .sl { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+.stat .sv { font-size: 20px; font-weight: 700; }
+
+/* ===== TABLE ===== */
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+th { text-align: left; padding: 8px 10px; font-size: 11px; font-weight: 700; color: var(--text2); border-bottom: 1px solid var(--border); white-space: nowrap; text-transform: uppercase; letter-spacing: .04em; }
+td { padding: 9px 10px; border-bottom: 1px solid var(--border); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+tr:hover td { background: var(--bg); }
+.ra { text-align: right; font-variant-numeric: tabular-nums; }
+.del { border: none; background: none; cursor: pointer; color: var(--text3); font-size: 14px; padding: 2px 6px; }
+.del:hover { color: #c0392b; }
+.badge { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-left: 3px; font-weight: 600; }
+.b-ai { background: var(--green-bg); color: var(--green); }
+.b-m  { background: var(--bg); color: var(--text3); border: 1px solid var(--border); }
+
+/* ===== OUTPUT ===== */
+.copy-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.copy-bar span { font-size: 13px; color: var(--text2); }
+.btn-copy { padding: 6px 16px; font-size: 13px; cursor: pointer; border: 1px solid var(--border2); border-radius: var(--r2); background: transparent; }
+.btn-copy:hover { background: var(--bg); }
+.out-area { background: var(--bg); border-radius: var(--r2); padding: 1rem; font-family: 'Menlo','Consolas',monospace; font-size: 12px; white-space: pre; overflow-x: auto; max-height: 300px; overflow-y: auto; line-height: 1.6; border: 1px solid var(--border); }
+.empty { text-align: center; padding: 2.5rem; color: var(--text3); font-size: 13px; }
+
+@media (max-width:600px) {
+  .mform { grid-template-columns: 1fr 1fr; }
+  .topbar { padding: 0 1rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== SETUP SCREEN ===== -->
+<div id="setup-screen" style="display: none;">
+  <div class="setup-card">
+    <div style="font-size:32px;margin-bottom:12px">🧾</div>
+    <h1>経費精算アプリ</h1>
+    <p class="sub">初回のみAPIキーとメールアドレスを設定してください。<br>設定後はすぐに使い始められます。</p>
+
+    <div class="setup-section">
+      <label>Anthropic APIキー</label>
+      <input type="password" id="s-apikey" placeholder="sk-ant-...">
+      <p class="hint">取得先: <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a>（写真読み取りに使用）</p>
+    </div>
+
+    <div class="setup-divider">── 個人識別用 ──</div>
+
+    <div class="setup-section">
+      <label>メールアドレス</label>
+      <input type="email" id="s-email" placeholder="you@example.com">
+      <p class="hint">データの識別に使用します（このPC内のみ保存）</p>
+    </div>
+
+    <button class="btn-primary" onclick="doSetup()">はじめる</button>
+    <div class="setup-err" id="setup-err"></div>
+
+    <p style="font-size:12px;color:var(--text3);margin-top:16px;line-height:1.6">
+      ※ APIキーとデータはこのPCのブラウザ内（localStorage）のみに保存され、外部サーバーには送信されません。<br>
+      ※ 写真読み取り時のみAnthropicのAPIに画像が送信されます。
+    </p>
+  </div>
+</div>
+
+<!-- ===== APP SCREEN ===== -->
+<div id="app-screen" style="display: block;">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span style="font-size:20px">🧾</span>
+      <span class="topbar-title">経費精算</span>
+    </div>
+    <div class="topbar-right">
+      <span class="save-pill" id="save-pill"></span>
+      <span id="user-label" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">rikufujita1229@gmail.com</span>
+      <button class="btn-sm" onclick="doLogout()">設定変更</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- ① 追加 -->
+    <div class="card">
+      <div class="card-title">① 経費を追加</div>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('photo',this)">📷 写真から読み取る</button>
+        <button class="tab" onclick="switchTab('manual',this)">✏️ 手動入力</button>
+      </div>
+
+      <div id="tab-photo">
+        <div class="dz" id="dz">
+          <div class="dz-icon">📎</div>
+          <p>ここにファイルをドロップ</p>
+          <div class="fmt-row">
+            <span class="fmt">JPG</span><span class="fmt">PNG</span><span class="fmt">WEBP</span>
+            <span class="fmt">HEIC/HEIF</span><span class="fmt">PDF（複数ページ）</span>
+          </div>
+          <p class="dz-sub">1枚に複数レシートが写っていてもまとめて読み取ります</p>
+          <button class="btn-pick" id="btn-pick">ファイルを選択</button>
+        </div>
+        <input type="file" id="file-in" accept="image/*,.heic,.heif,application/pdf" style="display:none" onchange="handleFile(event)">
+        <div class="status-box" id="status-box">
+          <div class="proc-row">
+            <div class="spinner" id="spinner"></div>
+            <span id="status-txt"></span>
+          </div>
+          <div class="preview-strip" id="previews"></div>
+          <div class="log-box" id="logbox"></div>
+        </div>
+      </div>
+
+      <div id="tab-manual" style="display:none">
+        <div class="mform">
+          <div class="fg"><label>日付</label><input type="date" id="m-date"></div>
+          <div class="fg"><label>金額（税込・円）</label><input type="number" id="m-amt" placeholder="例: 1500"></div>
+          <div class="fg"><label>店舗名 / 支払先</label><input type="text" id="m-store" placeholder="例: スターバックス"></div>
+          <div class="fg"><label>勘定科目</label>
+            <select id="m-cat">
+              <option>旅費交通費</option><option>会議費</option><option>会議費（8）</option>
+              <option>交際費</option><option>消耗品費（現場）</option>
+              <option>備品消耗品費（事務所）</option><option>通信費</option>
+              <option>租税公課</option><option>雑費</option>
+            </select>
+          </div>
+          <div class="fg"><label>内容</label><input type="text" id="m-desc" placeholder="例: 打ち合わせ軽食費"></div>
+          <button class="btn-add" onclick="addManual()">＋ 追加</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ② 一覧 -->
+    <div class="card">
+      <div class="card-title">② 登録済み経費一覧</div>
+      <div class="month-tabs" id="month-tabs"><button class="mtab active" onclick="setMonth('all')">すべて<span class="cnt">0</span></button></div>
+      <div class="stat-row">
+        <div class="stat"><div class="sl">表示中の件数</div><div class="sv" id="st-count">0 件</div></div>
+        <div class="stat"><div class="sl">表示中の合計</div><div class="sv" id="st-total">¥0</div></div>
+      </div>
+      <div class="tbl-wrap" id="tbl-wrap"><div class="empty">この月に経費がありません</div></div>
+    </div>
+
+    <!-- ③ 出力 -->
+    <div class="card">
+      <div class="card-title">③ 提出フォーマット出力</div>
+      <div class="copy-bar">
+        <span id="period-lbl">出力期間: すべての月</span>
+        <button class="btn-copy" onclick="copyOut()">📋 コピー</button>
+      </div>
+      <div class="out-area" id="out-area">（この期間に経費がありません）</div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+// ===== CONFIG & STATE =====
+const STORAGE_KEY = 'expense_app_v1';
+let cfg = { apiKey: '', email: '' };
+let entries = [];
+let nextId = 1;
+let activeMonth = 'all';
+let saveTimer = null;
+
+const now = new Date();
+const CY = now.getFullYear();
+const CM = now.getMonth() + 1;
+
+if (typeof pdfjsLib !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// ===== PERSISTENCE =====
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const d = JSON.parse(raw);
+    cfg = d.cfg || cfg;
+    // 複数ユーザー対応: メールアドレスをキーにしてデータを分離
+    entries = (d.users && d.users[cfg.email]) ? d.users[cfg.email] : [];
+    nextId = entries.length ? Math.max(...entries.map(e => e.id)) + 1 : 1;
+  } catch(e) {}
+}
+
+function save() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const existing = raw ? JSON.parse(raw) : {};
+    const users = existing.users || {};
+    users[cfg.email] = entries;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ cfg, users }));
+    setSavePill('saved');
+    setTimeout(() => setSavePill(''), 2000);
+  } catch(e) {}
+}
+
+function scheduleSave() {
+  setSavePill('saving');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(save, 1200);
+}
+
+function setSavePill(state) {
+  const p = document.getElementById('save-pill');
+  p.className = 'save-pill' + (state ? ' ' + state : '');
+  p.textContent = state === 'saving' ? '保存中…' : state === 'saved' ? '✓ 保存済み' : '';
+}
+
+// ===== SETUP =====
+function doSetup() {
+  const apiKey = document.getElementById('s-apikey').value.trim();
+  const email  = document.getElementById('s-email').value.trim();
+  const err    = document.getElementById('setup-err');
+  err.style.display = 'none';
+
+  if (!apiKey.startsWith('sk-ant-')) { showSetupErr('APIキーが正しくありません（sk-ant- で始まるもの）'); return; }
+  if (!email.includes('@'))          { showSetupErr('メールアドレスを正しく入力してください'); return; }
+
+  cfg = { apiKey, email };
+  // 既存のユーザーデータを読み込む
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const existing = raw ? JSON.parse(raw) : {};
+    const users = existing.users || {};
+    entries = users[email] || [];
+    nextId = entries.length ? Math.max(...entries.map(e => e.id)) + 1 : 1;
+  } catch(e) {}
+
+  save();
+  showApp();
+}
+
+function showSetupErr(msg) {
+  const el = document.getElementById('setup-err');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function doLogout() {
+  document.getElementById('app-screen').style.display = 'none';
+  document.getElementById('setup-screen').style.display = 'flex';
+  // フォームに現在の設定を戻す
+  document.getElementById('s-apikey').value = cfg.apiKey;
+  document.getElementById('s-email').value  = cfg.email;
+}
+
+function showApp() {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display   = 'block';
+  document.getElementById('user-label').textContent = cfg.email;
+  renderAll();
+}
+
+// ===== HELPERS =====
+function getMonthKey(d) {
+  if (!d) return null;
+  const dt = new Date(d);
+  if (isNaN(dt)) return null;
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+}
+function monthLabel(k) {
+  const [y,m] = k.split('-');
+  return `${y}年${parseInt(m)}月`;
+}
+function getMonths() {
+  return [...new Set(entries.map(e => getMonthKey(e.date)).filter(Boolean))].sort();
+}
+function getFiltered() {
+  if (activeMonth === 'all') return entries;
+  return entries.filter(e => getMonthKey(e.date) === activeMonth);
+}
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ===== RENDER =====
+function renderAll() {
+  const months = getMonths();
+  let h = `<button class="mtab ${activeMonth==='all'?'active':''}" onclick="setMonth('all')">すべて<span class="cnt">${entries.length}</span></button>`;
+  months.forEach(k => {
+    const c = entries.filter(e => getMonthKey(e.date) === k).length;
+    h += `<button class="mtab ${activeMonth===k?'active':''}" onclick="setMonth('${k}')">${monthLabel(k)}<span class="cnt">${c}</span></button>`;
+  });
+  document.getElementById('month-tabs').innerHTML = h;
+
+  const f = getFiltered();
+  const tot = f.reduce((s,e) => s+(parseInt(e.amount)||0), 0);
+  document.getElementById('st-count').textContent = f.length + ' 件';
+  document.getElementById('st-total').textContent = '¥' + tot.toLocaleString();
+
+  const wrap = document.getElementById('tbl-wrap');
+  if (!f.length) {
+    wrap.innerHTML = '<div class="empty">この月に経費がありません</div>';
+  } else {
+    let t = `<table><colgroup>
+      <col style="width:102px"><col style="width:23%"><col style="width:15%">
+      <col style="width:auto"><col style="width:80px"><col style="width:36px">
+    </colgroup><thead><tr>
+      <th>日付</th><th>店舗名</th><th>勘定科目</th><th>内容</th><th class="ra">金額</th><th></th>
+    </tr></thead><tbody>`;
+    f.forEach(e => {
+      const sb = `<span class="badge ${e.source==='manual'?'b-m':'b-ai'}">${e.source==='manual'?'手動':'AI'}</span>`;
+      t += `<tr>
+        <td>${esc(e.date)||'—'}</td>
+        <td>${esc(e.store)||'—'}${sb}</td>
+        <td>${esc(e.category)||'—'}</td>
+        <td>${esc(e.desc)||'—'}</td>
+        <td class="ra">¥${(parseInt(e.amount)||0).toLocaleString()}</td>
+        <td><button class="del" onclick="delEntry(${e.id})">✕</button></td>
+      </tr>`;
+    });
+    wrap.innerHTML = t + '</tbody></table>';
+  }
+
+  // output
+  const lbl = activeMonth === 'all' ? 'すべての月' : monthLabel(activeMonth);
+  document.getElementById('period-lbl').textContent = '出力期間: ' + lbl;
+  if (!f.length) { document.getElementById('out-area').textContent = '（この期間に経費がありません）'; return; }
+  const sorted = [...f].sort((a,b) => (a.date||'').localeCompare(b.date||''));
+  const total2 = sorted.reduce((s,e) => s+(parseInt(e.amount)||0), 0);
+  let lines = ['No.\t月日\t勘定科目\t金額（税込合計）\t内容（支払先）\t内訳（支払内容）\t詳細'];
+  sorted.forEach((e,i) => lines.push(`${i+1}\t${e.date||''}\t${e.category||''}\t${parseInt(e.amount)||0}\t${e.store||''}\t${e.desc||''}\t`));
+  lines.push('', '\t合計\t' + total2.toLocaleString());
+  document.getElementById('out-area').textContent = lines.join('\n');
+}
+
+function setMonth(k) { activeMonth = k; renderAll(); }
+
+function delEntry(id) {
+  entries = entries.filter(e => e.id !== id);
+  renderAll(); scheduleSave();
+}
+
+function addManual() {
+  const date  = document.getElementById('m-date').value;
+  const amt   = document.getElementById('m-amt').value;
+  const store = document.getElementById('m-store').value;
+  const cat   = document.getElementById('m-cat').value;
+  const desc  = document.getElementById('m-desc').value;
+  if (!amt) { alert('金額を入力してください'); return; }
+  entries.push({ id: nextId++, date, amount: String(parseInt(amt)), store, category: cat, desc, source: 'manual' });
+  ['m-date','m-amt','m-store','m-desc'].forEach(id => document.getElementById(id).value = '');
+  const key = `${CY}-${String(CM).padStart(2,'0')}`;
+  if (date && getMonthKey(date) !== key) {} // keep as-is
+  renderAll(); scheduleSave();
+}
+
+function switchTab(t, btn) {
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-photo').style.display  = t === 'photo'  ? '' : 'none';
+  document.getElementById('tab-manual').style.display = t === 'manual' ? '' : 'none';
+}
+
+// ===== STATUS =====
+function setStatus(msg, spin) {
+  const box = document.getElementById('status-box');
+  box.style.display = 'block';
+  document.getElementById('status-txt').textContent = msg;
+  document.getElementById('spinner').style.display = spin ? '' : 'none';
+}
+function addLog(msg) {
+  const l = document.getElementById('logbox');
+  const d = document.createElement('div'); d.textContent = msg; l.appendChild(d);
+  l.scrollTop = l.scrollHeight;
+}
+function addPreview(src) {
+  const img = document.createElement('img'); img.src = src;
+  document.getElementById('previews').appendChild(img);
+}
+function clearStatus() {
+  document.getElementById('status-box').style.display = 'none';
+  document.getElementById('previews').innerHTML = '';
+  document.getElementById('logbox').innerHTML = '';
+}
+
+// ===== DROP ZONE =====
+window.addEventListener('dragover', e => e.preventDefault(), false);
+window.addEventListener('drop',     e => e.preventDefault(), false);
+
+function setupDrop() {
+  const dz   = document.getElementById('dz');
+  const btn  = document.getElementById('btn-pick');
+  const fin  = document.getElementById('file-in');
+  if (!dz || !btn || !fin) { setTimeout(setupDrop, 100); return; }
+
+  // クリックでファイル選択（ゾーン全体 or ボタン）
+  btn.addEventListener('click', e => { e.stopPropagation(); fin.click(); });
+  dz.addEventListener('click', e => {
+    if (e.target === btn) return;
+    fin.click();
+  });
+
+  // ドラッグ
+  dz.addEventListener('dragenter', e => { e.preventDefault(); e.stopPropagation(); dz.classList.add('over'); });
+  dz.addEventListener('dragover',  e => { e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; dz.classList.add('over'); });
+  dz.addEventListener('dragleave', e => { e.preventDefault(); e.stopPropagation(); if (!dz.contains(e.relatedTarget)) dz.classList.remove('over'); });
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); e.stopPropagation();
+    dz.classList.remove('over');
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) processFile(f);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', setupDrop);
+
+function handleFile(ev) {
+  const f = ev.target.files[0]; ev.target.value = '';
+  if (f) processFile(f);
+}
+
+// ===== FILE PROCESSING =====
+async function processFile(file) {
+  clearStatus();
+  if (!cfg.apiKey || !cfg.apiKey.startsWith('sk-ant-')) {
+    setStatus('エラー: APIキーが設定されていません。右上の「設定変更」から設定してください。', false);
+    return;
+  }
+  setStatus('ファイルを受け取りました: ' + file.name, true);
+  const name = file.name.toLowerCase();
+  const isPdf  = name.endsWith('.pdf') || file.type === 'application/pdf';
+  const isHeic = name.endsWith('.heic') || name.endsWith('.heif') || file.type.includes('heic') || file.type.includes('heif');
+  try {
+    if (isPdf)       await processPdf(file);
+    else if (isHeic) await processHeic(file);
+    else             await processImage(file);
+    activeMonth = `${CY}-${String(CM).padStart(2,'0')}`;
+    renderAll(); scheduleSave();
+  } catch(err) {
+    setStatus('エラー: ' + err.message, false);
+    addLog('詳細: ' + err.message);
+    console.error(err);
+  }
+}
+
+function toDateStr(mmdd) {
+  if (!mmdd) return `${CY}-${String(CM).padStart(2,'0')}-01`;
+  const parts = mmdd.split('-');
+  const day = (parts[parts.length-1] || '01').padStart(2,'0');
+  return `${CY}-${String(CM).padStart(2,'0')}-${day}`;
+}
+
+// ===== AI CALL (direct from browser) =====
+async function callAI(base64, mime) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': cfg.apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-request-override': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-opus-4-5',
+      max_tokens: 2000,
+      system: `あなたはレシート・領収書の画像から情報を抽出するアシスタントです。
+画像に含まれるレシート・領収書をすべて見つけ、それぞれ情報を抽出してください。
+レシートが1枚だけでも配列で返してください。
+必ずJSON配列のみを返してください。各要素:
+{"date":"MM-DD","amount":"数値のみ","store":"店舗名","category":"旅費交通費/会議費/交際費/消耗品費（現場）/通信費/雑費のどれか","desc":"内容の簡単な説明"}
+dateは月日のみ（MM-DD）。情報不明は空文字。バッククォート・説明文不要。JSON配列のみ出力。`,
+      messages: [{ role: 'user', content: [
+        { type: 'image', source: { type: 'base64', media_type: mime, data: base64 } },
+        { type: 'text', text: '画像内のレシートをすべて抽出しJSON配列で返してください。' }
+      ]}]
+    })
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error?.message || `APIエラー ${res.status}`);
+  }
+  const data = await res.json();
+  const text = (data.content||[]).filter(b => b.type==='text').map(b => b.text).join('');
+  const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+  return Array.isArray(parsed) ? parsed : [parsed];
+}
+
+function registerItems(items) {
+  let added = 0;
+  (items||[]).forEach(p => {
+    if (!p.amount || parseInt(p.amount) <= 0) return;
+    entries.push({
+      id: nextId++,
+      date: toDateStr(p.date),
+      amount: String(parseInt(p.amount)),
+      store: p.store || '',
+      category: p.category || '旅費交通費',
+      desc: p.desc || '',
+      source: 'photo'
+    });
+    added++;
+  });
+  return added;
+}
+
+async function processImage(file) {
+  setStatus('画像を読み込み中...', true);
+  const dataUrl = await readDataURL(file);
+  addPreview(dataUrl);
+  setStatus('画像を圧縮中...', true);
+  const compressed = await compressImage(dataUrl, file.type || 'image/jpeg');
+  setStatus('AIがレシートを読み取り中...', true);
+  const items = await callAI(compressed.base64, compressed.mime);
+  const added = registerItems(items);
+  setStatus(`✓ ${items.length}件検出 → ${added}件登録（${CY}年${CM}月）`, false);
+  items.forEach(p => addLog(`  ${p.store||'(不明)'} ¥${(parseInt(p.amount)||0).toLocaleString()}`));
+}
+
+async function processHeic(file) {
+  setStatus('HEIC/HEIFを変換中...', true);
+  addLog('HEIC形式を検出。変換を試みます...');
+  const ab  = await readArrayBuffer(file);
+  const url = URL.createObjectURL(new Blob([ab], { type: 'image/heic' }));
+  const img = new Image();
+  await new Promise((res, rej) => {
+    img.onload = res;
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('HEICのデコードに失敗。Safari使用またはJPGに変換してください。')); };
+    img.src = url;
+  });
+  const c = document.createElement('canvas');
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  c.getContext('2d').drawImage(img, 0, 0);
+  URL.revokeObjectURL(url);
+  const dataUrl = c.toDataURL('image/jpeg', 0.92);
+  addPreview(dataUrl);
+  addLog('変換完了。圧縮中...');
+  const compressed = await compressImage(dataUrl, 'image/jpeg');
+  setStatus('AIがレシートを読み取り中...', true);
+  const items = await callAI(compressed.base64, compressed.mime);
+  const added = registerItems(items);
+  setStatus(`✓ ${items.length}件検出 → ${added}件登録（${CY}年${CM}月）`, false);
+  items.forEach(p => addLog(`  ${p.store||'(不明)'} ¥${(parseInt(p.amount)||0).toLocaleString()}`));
+}
+
+async function processPdf(file) {
+  if (typeof pdfjsLib === 'undefined') throw new Error('PDF.jsの読み込みに失敗しました。再読み込みしてください。');
+  setStatus('PDFを解析中...', true);
+  const ab  = await readArrayBuffer(file);
+  const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+  const n   = pdf.numPages;
+  addLog(`${n}ページのPDFを検出`);
+  let total = 0;
+  for (let i = 1; i <= n; i++) {
+    setStatus(`ページ ${i}/${n} を処理中...`, true);
+    const page = await pdf.getPage(i);
+    const vp   = page.getViewport({ scale: 2 });
+    const c    = document.createElement('canvas');
+    c.width = vp.width; c.height = vp.height;
+    await page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+    const dataUrl = c.toDataURL('image/jpeg', 0.85);
+    if (i === 1) addPreview(dataUrl);
+    addLog(`ページ${i}: 圧縮・読み取り中...`);
+    try {
+      const compressed = await compressImage(dataUrl, 'image/jpeg');
+      const items = await callAI(compressed.base64, compressed.mime);
+      const added = registerItems(items);
+      total += added;
+      items.forEach(p => { if (parseInt(p.amount) > 0) addLog(`  ✓ ${p.store||'(不明)'} ¥${(parseInt(p.amount)||0).toLocaleString()}`); });
+      if (!items.some(p => parseInt(p.amount) > 0)) addLog(`ページ${i}: レシートなし（スキップ）`);
+    } catch(e) { addLog(`ページ${i}: 失敗 — ${e.message}`); }
+  }
+  setStatus(`✓ PDF完了: ${total}件登録（${CY}年${CM}月）`, false);
+}
+
+
+// ===== IMAGE COMPRESSION =====
+// Anthropic API上限4.5MB以内に収まるよう画像を圧縮・リサイズ
+async function compressImage(dataUrl, mimeType) {
+  const MAX_BYTES = 4.5 * 1024 * 1024; // 4.5MB
+  const MAX_DIM   = 2048;              // 長辺の最大ピクセル数
+
+  // base64バイト数を概算
+  const base64 = dataUrl.split(',')[1];
+  const approxBytes = base64.length * 0.75;
+  if (approxBytes <= MAX_BYTES) return { base64, mime: mimeType }; // そのままOK
+
+  // Canvasでリサイズ＆圧縮
+  const img = new Image();
+  await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = dataUrl; });
+
+  let w = img.naturalWidth, h = img.naturalHeight;
+  if (w > MAX_DIM || h > MAX_DIM) {
+    if (w >= h) { h = Math.round(h * MAX_DIM / w); w = MAX_DIM; }
+    else        { w = Math.round(w * MAX_DIM / h); h = MAX_DIM; }
+  }
+
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  c.getContext('2d').drawImage(img, 0, 0, w, h);
+
+  // 品質を下げながら4.5MB以内に収まるまで繰り返す
+  let quality = 0.85;
+  let result;
+  do {
+    result = c.toDataURL('image/jpeg', quality);
+    quality -= 0.1;
+  } while (result.split(',')[1].length * 0.75 > MAX_BYTES && quality > 0.1);
+
+  return { base64: result.split(',')[1], mime: 'image/jpeg' };
+}
+
+function readDataURL(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = e => res(e.target.result);
+    r.onerror = () => rej(new Error('ファイル読み込み失敗'));
+    r.readAsDataURL(file);
+  });
+}
+function readArrayBuffer(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = e => res(e.target.result);
+    r.onerror = () => rej(new Error('ファイル読み込み失敗'));
+    r.readAsArrayBuffer(file);
+  });
+}
+
+function copyOut() {
+  navigator.clipboard.writeText(document.getElementById('out-area').textContent).then(() => {
+    const btn = document.querySelector('.btn-copy');
+    btn.textContent = '✓ コピー済み';
+    setTimeout(() => btn.textContent = '📋 コピー', 2000);
+  });
+}
+
+// ===== INIT =====
+(function() {
+  load();
+  // 設定済みならそのままアプリを表示
+  if (cfg.apiKey && cfg.email) {
+    document.getElementById('s-apikey').value = cfg.apiKey;
+    document.getElementById('s-email').value  = cfg.email;
+    showApp();
+  }
+  document.getElementById('s-email').addEventListener('keydown', e => { if (e.key === 'Enter') doSetup(); });
+})();
+</script>
+
+
+<div id="claude-static-indicator-container" style="position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; justify-content: center; padding: 6px 6px 6px 16px; background: rgb(250, 249, 245); border: 0.5px solid rgba(31, 30, 29, 0.3); border-radius: 14px; box-shadow: rgba(0, 0, 0, 0.15) 0px 40px 80px 0px; z-index: 2147483647; pointer-events: none; white-space: nowrap; user-select: none; font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Roboto, &quot;Helvetica Neue&quot;, Arial, sans-serif;">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px; display: inline-block; vertical-align: middle; flex-shrink: 0; margin-right: 8px;">
+        <path d="M3.13946 10.6399L6.28757 8.87462L6.37405 8.73821L6.28757 8.6339H6.13189L5.60432 8.6018L3.80541 8.55366L2.24865 8.48947L0.735135 8.40923H0.492973L0.354595 8.32899L0.181622 8.1685L0.0345946 8.01605L0 7.85557L0.0345946 7.62287L0.138378 7.44634L0.224865 7.40622H0.354595L0.812973 7.44634L1.82486 7.51856L3.34703 7.62287L4.44541 7.68706L6.08 7.85557H6.33946L6.37405 7.75125L6.28757 7.68706L6.21838 7.62287L4.64432 6.55567L2.94054 5.4323L2.04973 4.78235L1.57405 4.45336L1.33189 4.14845L1.22811 3.92377L1.17622 3.69107L1.22811 3.47442L1.33189 3.28185L1.46162 3.13741L1.66054 2.99298H1.87676L2.24865 3.0331L2.39568 3.07322L2.99243 3.53059L4.26378 4.51755L5.92432 5.73721L6.16649 5.93781H6.27892V5.82548L6.16649 5.64092L5.26703 4.01204L4.30703 2.35105L3.87459 1.66098L3.76216 1.25176C3.7391 1.16082 3.69297 0.977332 3.69297 0.970913V0.762287L3.77946 0.505517L3.93513 0.240722L4.18595 0.0882648L4.4627 0H4.67892L4.83459 0.0240722L5.12865 0.0882648L5.4054 0.328987L5.82054 1.27583L6.48649 2.76028L7.52432 4.78235L7.82703 5.38415L7.99135 5.93781L8.05189 6.10632H8.15567V6.01003L8.24216 4.87061L8.39784 3.47442L8.55351 1.67703L8.6054 1.17151L8.85622 0.561685L8.9773 0.417252L9.21946 0.232698H9.35784L9.74703 0.417252L9.97189 0.665998L10.067 0.874624L10.0238 1.17151L9.83351 2.40722L9.46162 4.34102L9.21946 5.64092H9.35784L9.52216 5.47242L10.1795 4.60582L11.2778 3.22568L11.7622 2.68004L12.333 2.07823L12.6962 1.78937L13.0162 1.67703L13.3881 1.78937L13.7168 2.06219L13.8897 2.54363V2.76028L13.6649 3.32197L12.9557 4.22066L12.3676 4.98295L12.0043 5.56871L11.0011 7.02106V7.08526H11.1741L13.0768 6.67603L14.1059 6.49147L15.3341 6.28285L15.5762 6.34704L15.8876 6.53962L15.9481 6.80441L15.8876 7.12538L15.7319 7.34203L14.4173 7.66299L12.8778 7.97593L10.5854 8.51559C10.5705 8.51909 10.56 8.53236 10.56 8.54764C10.56 8.56468 10.573 8.57891 10.59 8.58044L11.6238 8.67402L12.0649 8.69809H13.1459L15.1611 8.85055L15.6886 9.19559L15.9481 9.39619L16 9.62086L15.9481 9.94985L15.8443 10.1023L15.4119 10.3029L15.1351 10.3591L14.0454 10.1023L11.4941 9.49248L10.6205 9.27583H10.4995V9.34804L11.2259 10.0622L12.5665 11.2658L14.2357 12.8225L14.3222 13.0953V13.2076L14.1059 13.5125L13.9243 13.5206L13.8811 13.4804L12.4108 12.3731L12.2984 12.325L11.84 11.8756L10.56 10.7924H10.4735V10.9047L10.7676 11.338L12.333 13.6891L12.4108 14.4112L12.2984 14.6439L11.8919 14.7884L11.667 14.7563L11.4508 14.7081L11.2605 14.5396L10.5254 13.4162L9.5827 11.9719L8.82162 10.672H8.79342C8.76039 10.672 8.73278 10.6972 8.7297 10.73L8.27676 15.5667L8.06919 15.8154L7.6454 16H7.58486L7.17838 15.6951L6.96216 15.1976L7.17838 14.2106L7.43784 12.9268L7.6454 11.9077L7.83567 10.6399L7.95187 10.2164C7.9548 10.2057 7.95069 10.1944 7.94161 10.1881C7.91157 10.1672 7.87034 10.1741 7.84878 10.2037L6.89297 11.5145L5.44 13.4804L4.28973 14.7081L4.01297 14.8205H3.80541L3.5373 14.5717V14.4514L3.58054 14.1304L3.84865 13.7372L5.44 11.7151L6.4 10.4554L7.01872 9.73222C7.04511 9.70139 7.04245 9.65523 7.0127 9.62763C7.00333 9.61894 6.98925 9.61773 6.97854 9.62471L2.75027 12.3811L1.99784 12.4774L1.66919 12.1725L1.71243 11.675L1.86811 11.5145L3.13946 10.6399Z" fill="#D97757"></path>
+      </svg>
+      <span style="vertical-align: middle; color: #141413; font-size: 14px; display: inline-block;">Claude is active in this tab group</span>
+      <div style="display: inline-block; width: 0.5px; height: 32px; background: rgba(31, 30, 29, 0.15); margin: 0 8px; vertical-align: middle;"></div>
+      <button id="claude-static-chat-button" style="position: relative; display: inline-flex; align-items: center; justify-content: center; padding: 6px; background: transparent; border: none; cursor: pointer; pointer-events: auto; vertical-align: middle; width: 32px; height: 32px; border-radius: 8px; transition: background 0.2s;">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="#141413" xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px; display: block;">
+          <path d="M10 2.5C14.1421 2.5 17.5 5.85786 17.5 10C17.5 14.1421 14.1421 17.5 10 17.5H3C2.79779 17.5 2.61549 17.3782 2.53809 17.1914C2.4607 17.0046 2.50349 16.7895 2.64648 16.6465L4.35547 14.9365C3.20124 13.6175 2.5 11.8906 2.5 10C2.5 5.85786 5.85786 2.5 10 2.5ZM10 3.5C6.41015 3.5 3.5 6.41015 3.5 10C3.5 11.7952 4.22659 13.4199 5.40332 14.5967L5.46582 14.6729C5.52017 14.7544 5.5498 14.8508 5.5498 14.9502C5.5498 15.0828 5.49709 15.2099 5.40332 15.3037L4.20703 16.5H10C13.5899 16.5 16.5 13.5899 16.5 10C16.5 6.41015 13.5899 3.5 10 3.5ZM13.29 9.30371C13.3986 9.05001 13.6925 8.93174 13.9463 9.04004C14.2 9.14863 14.3183 9.44253 14.21 9.69629C13.8506 10.536 13.1645 11.25 12.25 11.25C11.6372 11.25 11.128 10.9289 10.75 10.4648C10.372 10.9289 9.86276 11.25 9.25 11.25C8.63724 11.25 8.12801 10.9289 7.75 10.4648C7.37198 10.9289 6.86276 11.25 6.25 11.25C5.97386 11.25 5.75 11.0261 5.75 10.75C5.75 10.4739 5.97386 10.25 6.25 10.25C6.58764 10.25 7.00448 9.97056 7.29004 9.30371L7.32422 9.2373C7.41431 9.09121 7.5749 9 7.75 9C7.9501 9 8.13123 9.11975 8.20996 9.30371L8.32227 9.53516C8.59804 10.0359 8.95442 10.25 9.25 10.25C9.58764 10.25 10.0045 9.97056 10.29 9.30371L10.3242 9.2373C10.4143 9.09121 10.5749 9 10.75 9C10.9501 9 11.1312 9.11975 11.21 9.30371L11.3223 9.53516C11.598 10.0359 11.9544 10.25 12.25 10.25C12.5876 10.25 13.0045 9.97056 13.29 9.30371Z"></path>
+        </svg>
+        <span id="claude-static-chat-tooltip" style="position: absolute; bottom: calc(100% + 12px); left: 50%; transform: translateX(-50%); padding: 6px 12px; background: #30302E; color: #FAF9F5; border-radius: 6px; font-size: 12px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Open chat</span>
+      </button>
+      <button id="claude-static-close-button" style="position: relative; display: inline-flex; align-items: center; justify-content: center; padding: 6px; background: transparent; border: none; cursor: pointer; pointer-events: auto; vertical-align: middle; width: 32px; height: 32px; margin-left: 4px; border-radius: 8px; transition: background 0.2s;">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px; display: block;">
+          <path d="M15.1464 4.14642C15.3417 3.95121 15.6582 3.95118 15.8534 4.14642C16.0486 4.34168 16.0486 4.65822 15.8534 4.85346L10.7069 9.99997L15.8534 15.1465C16.0486 15.3417 16.0486 15.6583 15.8534 15.8535C15.6826 16.0244 15.4186 16.0461 15.2245 15.918L15.1464 15.8535L9.99989 10.707L4.85338 15.8535C4.65813 16.0486 4.34155 16.0486 4.14634 15.8535C3.95115 15.6583 3.95129 15.3418 4.14634 15.1465L9.29286 9.99997L4.14634 4.85346C3.95129 4.65818 3.95115 4.34162 4.14634 4.14642C4.34154 3.95128 4.65812 3.95138 4.85338 4.14642L9.99989 9.29294L15.1464 4.14642Z" fill="#141413"></path>
+        </svg>
+        <span id="claude-static-close-tooltip" style="position: absolute; bottom: calc(100% + 12px); left: 50%; transform: translateX(-50%); padding: 6px 12px; background: #30302E; color: #FAF9F5; border-radius: 6px; font-size: 12px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.2s; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">Dismiss</span>
+      </button>
+    </div></body></html>
